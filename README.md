@@ -1,68 +1,148 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
+##  如何使用
+1. 使用create-react-app创建项目
+. 打开命令提示符
+    C:\WINDOWS\system32>d:
 
-In the project directory, you can run:
+. 全局安装create-react-app
+    D:\>npm install -g create-react-app
 
-### `npm start`
+. 创建项目
+    D:\>create-react-app reday-tutorial
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+. 进入项目所在目录
+    D:\>cd reday-tutorial
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+. git操作
+    在github创建reday-tutorial项目之后，建立与远程github项目的关联
+    D:\reday-tutorial>git remote add origin https://github.com/bidanjun/reday-tutorial.git
 
-### `npm test`
+. 推送到github
+    D:\reday-tutorial>git push -u origin master
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. 安装reday
+. 安装reday
+    D:\reday-tutorial>npm install reday
 
-### `npm run build`
+. 签入之后，推送到远程服务器，然后创建一个标签
+    D:\reday-tutorial>npm install reday
+    D:\reday-tutorial>git tag -a v0.0.1_install_reday -m "install reday"
+    D:\reday-tutorial>git push --tags
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+. git log查看一下，目前有两个提交
+    D:\reday-tutorial>git log
+    install reday
+    Initial commit from Create React App
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+1. 约定：
+  之后的例子以counter计数器为例，业务逻辑在src/counter.model.js,Counter组件在counter.render.js
+  App组件在App.js,在此组合model和render
+  
+## 使用hook实现counter
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. 创建自定义的hook
+import React, { useState } from "react";
 
-### `npm run eject`
+//自定义的hook
+const useCounter = initialCount => {
+  const [count, setCount] = useState(initialCount);
+  return {
+    value: count,
+    increase:(step)=> () => setCount(prevCount => prevCount + step),
+    reset: () => setCount(initialCount)
+  };
+};
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+1. 创建counter组件
+//组件
+function Counter({ initialCount,step }) {
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+  //违背原则：仅传入属性
+  const counter = useCounter(initialCount);
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+  return (
+    <div>
+    <p>step ={step} You clicked {counter.value} times</p>
+    <button onClick={counter.increase(step)}>
+      Click me
+    </button>
+    <button onClick={counter.reset}>Reset</button>
+  </div>
+  );
+}
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+1.  自定义hook复用useCounter逻辑,而不是共享实例
+//两个Counter组件，行为是独立的
+//因此这里共享的是逻辑，而不是实例
+export default function App() {
+  return (
+    <div >
+      <h1>Counter use React hook </h1>
+      <Counter initialCount={0} step={2}/>
+      <Counter initialCount={0} step={1}/>
+    </div>
+  );
+}
 
-## Learn More
+1. 问题：我们需要解决render和model分离、需要解决共享实例的问题
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 使用connect实现render和model的分离
+1. 导入connect
+    import {connect} from 'reday'
 
-### Code Splitting
+1. 修改Counter
+  组件唯一的输入，应该是属性。提供不同的属性，呈现不同的UI和行为。
+  由此我们可以将Counter组件独立出来，放置在counter.render.js
+  import React from 'react';
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
+  export default function Counter({ initialCount,step ,value,increase,reset}) {
+    return (
+      <div>
+      <p>step ={step} You clicked {value} times</p>
+      <button onClick={increase(step)}>
+        Click me
+      </button>
+      <button onClick={reset}>Reset</button>
+    </div>
+    );
+  }
 
-### Analyzing the Bundle Size
+1. 同样，useCounter自定义hook也可独立出来，放置在counter.model.js
+  import React, { useState } from "react";
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
+  //自定义的hook
+  export default const useCounter = initialCount => {
+    const [count, setCount] = useState(initialCount);
+    return {
+      value: count,
+      increase:(step)=> () => setCount(prevCount => prevCount + step),
+      reset: () => setCount(initialCount)
+    };
+  };
 
-### Making a Progressive Web App
+1. 在App.js里组合render和model
+  import React from "react";
+  import useCounter from './counter.model.js'
+  import connect from 'reday'
+  import CounterOrigin from './counter.render.js'
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
+  //connect为原始的counter组件，组合属性
+  Const Counter=connect((props)=>{
+    const counter = useCounter(props.initialCount);
+    return {
+      ...counter
+    }  
+  })(Counter)
 
-### Advanced Configuration
+  //此时Counter组件包含了useCounter赋予的属性
+  export default function App() {
+    return (
+      <div >
+        <h1>Counter use React hook </h1>
+        <Counter initialCount={0} step={2}/>
+        <Counter initialCount={0} step={1}/>
+      </div>
+    );
+  }
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
