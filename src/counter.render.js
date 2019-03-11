@@ -4,7 +4,7 @@ import React from 'react'
 export default function Counter({ step ,value,increase,reset}) {
   return (
     <div>
-    <p>step ={step} You clicked {value} times</p>
+    <p>You clicked {value} times(step:{step})</p>
     <button onClick={increase(step)}>
       Click me
     </button>
